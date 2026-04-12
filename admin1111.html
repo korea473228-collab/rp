@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NSB 관리 시스템</title>
+    <title>직급 통합 관리 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --bg: #0f0f12; --card: #1a1a1f; --accent: #5865F2; --edit: #ff9500; --danger: #ff3b30; --text: #ffffff; }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); padding: 50px 20px; margin: 0; }
         .container { max-width: 950px; margin: 0 auto; }
         .form-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px; position: sticky; top: 20px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .grid-inputs { display: grid; grid-template-columns: 1.2fr 1fr 1.5fr 0.8fr; gap: 12px; margin-bottom: 12px; }
         input, select { background: #25252b; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
         .full-width { width: 100%; margin-top: 10px; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
@@ -37,104 +37,145 @@
     <div class="form-card">
         <input type="hidden" id="dbInternalId">
         <div class="grid-inputs">
-            <select id="iptCategory" onchange="updateRoleOptions()">
-                <option value="특임대">특임대</option>
-                <option value="일반">일반 부대</option>
-            </select>
             <input type="number" id="iptId" placeholder="고유 ID">
             <input type="text" id="iptName" placeholder="닉네임">
-            <select id="iptRole"></select>
-            <input type="number" id="iptRank" placeholder="순서">
+            <select id="iptRole">
+                <optgroup label="특임대 직급">
+                    <option value="특임대 사령관">특임대 사령관</option>
+                    <option value="특임대 부사령관">특임대 부사령관</option>
+                    <option value="특임대 팀장">특임대 팀장</option>
+                    <option value="특임대 팀원">특임대 팀원</option>
+                    <option value="특임대 수습">특임대 수습</option>
+                </optgroup>
+                <optgroup label="일반 직급">
+                    <option value="장관">장관</option><option value="차관">차관</option><option value="실장">실장</option>
+                    <option value="검사장">검사장</option><option value="본부장">본부장</option><option value="과장">과장</option>
+                    <option value="교위관">교위관</option><option value="교사관">교사관</option><option value="교도관">교도관</option>
+                    <option value="부관">부관</option><option value="생도">생도</option>
+                </optgroup>
+            </select>
+            <input type="number" id="iptRank" value="0" style="display:none;">
         </div>
         <input type="text" id="iptUrl" class="full-width" placeholder="이미지 URL">
         <input type="text" id="iptS" class="full-width" placeholder="소개글">
         <input type="text" id="iptDiscord" class="full-width" placeholder="디스코드 ID">
         <div class="btn-group">
-            <button id="addBtn" class="add-btn" onclick="saveData('insert')">추가</button>
-            <button id="updateBtn" class="edit-mode-btn" onclick="saveData('update')">업데이트</button>
+            <button id="addBtn" class="add-btn" onclick="saveData('insert')">부대원 추가</button>
+            <button id="updateBtn" class="edit-mode-btn" onclick="saveData('update')">정보 업데이트</button>
             <button id="cancelBtn" class="cancel-btn" onclick="resetForm()">취소</button>
         </div>
     </div>
     <div class="filter-tabs">
-        <button class="tab-btn active" onclick="setFilter('all', this)">전체보기</button>
-        <button class="tab-btn" onclick="setFilter('특임대', this)">특임대만</button>
-        <button class="tab-btn" onclick="setFilter('일반', this)">일반만</button>
+        <button class="tab-btn active" onclick="setFilter('all', this)">전체</button>
+        <button class="tab-btn" onclick="setFilter('특임대', this)">특임대</button>
+        <button class="tab-btn" onclick="setFilter('일반', this)">일반 부대</button>
     </div>
     <div id="listContainer"></div>
 </div>
+
 <script>
     const _u = "aHR0cHM6Ly9oaWFjdXB0cmlnc25zdHloamFmbC5zdXBhYmFzZS5jbw==";
     const _k = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1ocFlXTjFjSFJ5YVdkemJuTjBlV2hxWVdac0lpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpVMk5UTTBOellzSW1WNGNDSTZNakE1TVRJeU9UUTNObjAuM081Q2JDU01UeTFNQnFGYUVOQTFScno3V3g0UHNmSmtQM3B2Rk9QWld4UQ==";
     const sb = supabase.createClient(atob(_u), atob(_k));
+
+    const ROLES = [
+        {name: "특임대 사령관", color: "#FF3B30"},
+        {name: "특임대 부사령관", color: "#AF52DE"},
+        {name: "특임대 팀장", color: "#34C759"},
+        {name: "특임대 팀원", color: "#007AFF"},
+        {name: "특임대 수습", color: "#8E8E93"},
+        {name: "장관", color: "#d4af37"},
+        {name: "차관", color: "#a2a2a2"},
+        {name: "실장", color: "#9c2a2a"},
+        {name: "검사장", color: "#5e4b8b"},
+        {name: "본부장", color: "#b36b2d"},
+        {name: "과장", color: "#3a6b8a"},
+        {name: "교위관", color: "#4a4e8a"},
+        {name: "교사관", color: "#2d5a3f"},
+        {name: "교도관", color: "#705a45"},
+        {name: "부관", color: "#3d7a75"},
+        {name: "생도", color: "#636366"}
+    ];
+
     let currentData = [];
     let currentFilter = 'all';
-    const ROLE_DATA = {
-        "일반": [{name:"장관",color:"#d4af37"},{name:"차관",color:"#a2a2a2"},{name:"실장",color:"#9c2a2a"},{name:"검사장",color:"#5e4b8b"},{name:"본부장",color:"#b36b2d"},{name:"과장",color:"#3a6b8a"},{name:"교위관",color:"#4a4e8a"},{name:"교사관",color:"#2d5a3f"},{name:"교도관",color:"#705a45"},{name:"부관",color:"#3d7a75"},{name:"생도",color:"#636366"}],
-        "특임대": [{name:"특임대 사령관",color:"#FF3B30"},{name:"특임대 부사령관",color:"#AF52DE"},{name:"특임대 팀장",color:"#34C759"},{name:"특임대 팀원",color:"#007AFF"},{name:"특임대 수습",color:"#8E8E93"}]
-    };
-    function updateRoleOptions() {
-        const cat = document.getElementById('iptCategory').value;
-        document.getElementById('iptRole').innerHTML = ROLE_DATA[cat].map(r=>`<option value="${r.name}">${r.name}</option>`).join('');
+
+    async function fetchMembers() {
+        const {data, error} = await sb.from('org_members').select('*');
+        if(!error) { 
+            currentData = data; 
+            renderList(); 
+        }
     }
+
+    function renderList() {
+        const container = document.getElementById('listContainer');
+        container.innerHTML = '';
+        const cats = currentFilter === 'all' ? ["특임대", "일반"] : [currentFilter];
+        
+        cats.forEach(cat => {
+            const filtered = currentData.filter(m => {
+                const isSpecial = m.role.includes("특임대");
+                return cat === "특임대" ? isSpecial : !isSpecial;
+            });
+
+            filtered.sort((a, b) => {
+                const indexA = ROLES.findIndex(r => r.name === a.role);
+                const indexB = ROLES.findIndex(r => r.name === b.role);
+                return indexA - indexB;
+            });
+
+            if(filtered.length === 0) return;
+
+            const sec = document.createElement('div');
+            sec.innerHTML = `<div class="section-title">${cat} 명단</div><table><thead><tr><th style="width:15%">고유 ID</th><th>이름</th><th>직급</th><th style="width:20%">관리</th></tr></thead><tbody></tbody></table>`;
+            container.appendChild(sec);
+            const tbody = sec.querySelector('tbody');
+
+            filtered.forEach(m => {
+                const rObj = ROLES.find(r=>r.name === m.role);
+                tbody.innerHTML += `<tr>
+                    <td>${m.id}</td>
+                    <td><b>${m.name}</b></td>
+                    <td><span class="role-badge" style="background:${rObj?.color}20; color:${rObj?.color}; border:1px solid ${rObj?.color}40">${m.role}</span></td>
+                    <td class="action-btns">
+                        <button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
+                        <button class="del-btn" onclick="deleteMember(${m.id})">삭제</button>
+                    </td></tr>`;
+            });
+        });
+    }
+
     function setFilter(f, btn) {
         currentFilter = f;
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
         renderList();
     }
-    async function fetchMembers() {
-        const {data, error} = await sb.from('org_members').select('*').order('rank', {ascending:true});
-        if(!error) { currentData = data; renderList(); }
-    }
-    function renderList() {
-        const container = document.getElementById('listContainer');
-        container.innerHTML = '';
-        const cats = currentFilter === 'all' ? ["특임대", "일반"] : [currentFilter];
-        cats.forEach(cat => {
-            const filtered = currentData.filter(m => {
-                const mCat = m.category || "특임대";
-                return mCat === cat;
-            });
-            if(filtered.length === 0) return;
-            const sec = document.createElement('div');
-            sec.innerHTML = `<div class="section-title">${cat} 명단</div><table><thead><tr><th>ID</th><th>이름</th><th>직급</th><th>관리</th></tr></thead><tbody></tbody></table>`;
-            container.appendChild(sec);
-            const tbody = sec.querySelector('tbody');
-            filtered.forEach(m => {
-                const roleObj = [...ROLE_DATA["일반"], ...ROLE_DATA["특임대"]].find(r=>r.name === m.role);
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${m.id}</td><td><b>${m.name}</b></td>
-                    <td><span class="role-badge" style="background:${roleObj?.color}20; color:${roleObj?.color}; border:1px solid ${roleObj?.color}40">${m.role}</span></td>
-                    <td class="action-btns"><button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
-                    <button class="del-btn" onclick="deleteMember(${m.id})">삭제</button></td>`;
-                tbody.appendChild(tr);
-            });
-        });
-    }
+
     async function saveData(mode) {
-        const internalId = document.getElementById('dbInternalId').value;
         const payload = {
             id: parseInt(document.getElementById('iptId').value),
             name: document.getElementById('iptName').value,
             role: document.getElementById('iptRole').value,
-            category: document.getElementById('iptCategory').value,
-            rank: parseInt(document.getElementById('iptRank').value),
             url: document.getElementById('iptUrl').value,
             s: document.getElementById('iptS').value,
-            discord_id: document.getElementById('iptDiscord').value
+            discord_id: document.getElementById('iptDiscord').value,
+            rank: 0
         };
-        const res = mode === 'insert' ? await sb.from('org_members').insert([payload]) : await sb.from('org_members').update(payload).eq('id', internalId);
-        if(res.error) alert("오류: " + res.error.message);
+        const res = mode === 'insert' ? 
+            await sb.from('org_members').insert([payload]) : 
+            await sb.from('org_members').update(payload).eq('id', document.getElementById('dbInternalId').value);
+        
+        if(res.error) alert("저장 실패"); 
         else { resetForm(); fetchMembers(); }
     }
+
     function startEdit(m) {
         document.getElementById('dbInternalId').value = m.id;
         document.getElementById('iptId').value = m.id;
         document.getElementById('iptName').value = m.name;
-        document.getElementById('iptCategory').value = m.category || '특임대';
-        updateRoleOptions();
         document.getElementById('iptRole').value = m.role;
-        document.getElementById('iptRank').value = m.rank;
         document.getElementById('iptUrl').value = m.url || '';
         document.getElementById('iptS').value = m.s || '';
         document.getElementById('iptDiscord').value = m.discord_id || '';
@@ -143,6 +184,7 @@
         document.getElementById('cancelBtn').style.display = 'block';
         window.scrollTo({top:0, behavior:'smooth'});
     }
+
     function resetForm() {
         document.getElementById('dbInternalId').value = '';
         document.querySelectorAll('.form-card input').forEach(i=>i.value='');
@@ -150,8 +192,14 @@
         document.getElementById('updateBtn').style.display = 'none';
         document.getElementById('cancelBtn').style.display = 'none';
     }
-    async function deleteMember(id) { if(confirm("삭제?")) { await sb.from('org_members').delete().eq('id', id); fetchMembers(); } }
-    updateRoleOptions();
+
+    async function deleteMember(id) { 
+        if(confirm("정말 삭제하시겠습니까?")) { 
+            await sb.from('org_members').delete().eq('id', id); 
+            fetchMembers(); 
+        } 
+    }
+    
     fetchMembers();
 </script>
 </body>
