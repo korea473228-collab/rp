@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>특임대 데이터 관리</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --card: #1a1a1f;
+            --accent: #5865F2;
+            --edit: #ff9500;
+            --danger: #ff3b30;
+            --text: #ffffff;
+        }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); padding: 50px 20px; margin: 0; }
+        .container { max-width: 950px; margin: 0 auto; }
+        h1 { font-size: 24px; margin-bottom: 30px; text-align: center; }
+        .form-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px; position: sticky; top: 20px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        input, select { background: #25252b; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        input:focus { border-color: var(--accent); outline: none; }
+        .full-width { width: 100%; margin-top: 10px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        button { cursor: pointer; border: none; font-weight: 700; transition: 0.2s; flex: 1; }
+        .add-btn { background: var(--accent); color: #fff; padding: 15px; border-radius: 12px; }
+        .edit-mode-btn { background: var(--edit); color: #fff; display: none; padding: 15px; border-radius: 12px; }
+        .cancel-btn { background: #444; color: #fff; display: none; padding: 15px; border-radius: 12px; flex: 0.3; }
+        table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 20px; overflow: hidden; margin-top: 20px; }
+        th { background: rgba(255,255,255,0.03); padding: 15px; font-size: 13px; text-align: left; border-bottom: 1px solid #333; color: #888; }
+        td { padding: 15px; font-size: 14px; border-bottom: 1px solid #2a2a2f; }
+        .action-btns { display: flex; gap: 8px; }
+        .row-edit-btn { background: var(--edit); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
+        .del-btn { background: var(--danger); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
+        .id-label { color: var(--accent); font-weight: 800; font-family: monospace; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🛡️ 부대원 데이터 관리</h1>
+    <div class="form-card">
+        <input type="hidden" id="dbInternalId">
+        <div class="grid-inputs">
+            <input type="number" id="iptId" placeholder="고유 ID (번호)">
+            <input type="text" id="iptName" placeholder="닉네임">
+            <select id="iptRole">
+                <option value="특임대 사령관">특임대 사령관</option>
+                <option value="특임대 부사령관">특임대 부사령관</option>
+                <option value="특임대 팀장">특임대 팀장</option>
+                <option value="특임대 팀원">특임대 팀원</option>
+                <option value="특임대 수습">특임대 수습</option>
+            </select>
+            <input type="number" id="iptRank" placeholder="직급 순서">
+        </div>
+        <input type="text" id="iptUrl" class="full-width" placeholder="프로필 이미지 URL">
+        <input type="text" id="iptS" class="full-width" placeholder="소개글">
+        <input type="text" id="iptDiscord" class="full-width" placeholder="디스코드 고유 ID (Snowflake)">
+        <div class="btn-group">
+            <button id="addBtn" class="add-btn" onclick="saveData('insert')">부대원 추가</button>
+            <button id="updateBtn" class="edit-mode-btn" onclick="saveData('update')">정보 업데이트</button>
+            <button id="cancelBtn" class="cancel-btn" onclick="resetForm()">취소</button>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>순서</th>
+                <th>고유 ID</th>
+                <th>닉네임</th>
+                <th>역할</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+        <tbody id="memberList"></tbody>
+    </table>
+</div>
+<script>
+    const _u = "aHR0cHM6Ly9oaWFjdXB0cmlnc25zdHloamFmbC5zdXBhYmFzZS5jbw==";
+    const _k = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1ocFlXTjFjSFJ5YVdkemJuTjBlV2hxWVdac0lpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpVMk5UTTBOellzSW1WNGNDSTZNakE1TVRJeU9UUTNObjAuM081Q2JDU01UeTFNQnFGYUVOQTFScno3V3g0UHNmSmtQM3B2Rk9QWld4UQ==";
+    const sb = supabase.createClient(atob(_u), atob(_k));
+    async function fetchMembers() {
+        const { data, error } = await sb.from('org_members').select('*').order('rank', { ascending: true });
+        if (error) return;
+        const tbody = document.getElementById('memberList');
+        tbody.innerHTML = '';
+        data.forEach(m => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${m.rank}</td>
+                <td class="id-label">${m.id}</td>
+                <td><b>${m.name}</b></td>
+                <td>${m.role}</td>
+                <td class="action-btns">
+                    <button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
+                    <button class="del-btn" onclick="deleteMember(${m.id}, '${m.name}')">삭제</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    async function saveData(mode) {
+        const internalId = document.getElementById('dbInternalId').value;
+        const payload = {
+            id: parseInt(document.getElementById('iptId').value),
+            name: document.getElementById('iptName').value,
+            role: document.getElementById('iptRole').value,
+            rank: parseInt(document.getElementById('iptRank').value),
+            url: document.getElementById('iptUrl').value,
+            s: document.getElementById('iptS').value,
+            discord_id: document.getElementById('iptDiscord').value
+        };
+        if(isNaN(payload.id) || !payload.name) return alert("고유 ID와 닉네임은 필수입니다.");
+        let result;
+        if(mode === 'insert') {
+            result = await sb.from('org_members').insert([payload]);
+        } else {
+            result = await sb.from('org_members').update(payload).eq('id', internalId);
+        }
+        if (result.error) {
+            alert("오류: " + result.error.message);
+        } else {
+            alert(mode === 'insert' ? "추가 성공" : "수정 성공");
+            resetForm();
+            fetchMembers();
+        }
+    }
+    function startEdit(m) {
+        document.getElementById('dbInternalId').value = m.id;
+        document.getElementById('iptId').value = m.id;
+        document.getElementById('iptName').value = m.name;
+        document.getElementById('iptRole').value = m.role;
+        document.getElementById('iptRank').value = m.rank;
+        document.getElementById('iptUrl').value = m.url || '';
+        document.getElementById('iptS').value = m.s || '';
+        document.getElementById('iptDiscord').value = m.discord_id || '';
+        document.getElementById('addBtn').style.display = 'none';
+        document.getElementById('updateBtn').style.display = 'block';
+        document.getElementById('cancelBtn').style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function resetForm() {
+        document.getElementById('dbInternalId').value = '';
+        document.getElementById('iptId').value = '';
+        document.getElementById('iptName').value = '';
+        document.getElementById('iptRank').value = '';
+        document.getElementById('iptUrl').value = '';
+        document.getElementById('iptS').value = '';
+        document.getElementById('iptDiscord').value = '';
+        document.getElementById('addBtn').style.display = 'block';
+        document.getElementById('updateBtn').style.display = 'none';
+        document.getElementById('cancelBtn').style.display = 'none';
+    }
+    async function deleteMember(id, name) {
+        if (!confirm(`[${name}] 삭제하시겠습니까?`)) return;
+        await sb.from('org_members').delete().eq('id', id);
+        fetchMembers();
+    }
+    fetchMembers();
+</script>
+</body>
+</html>
