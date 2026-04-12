@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보안국 직급표</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;500;700&family=Noto+Sans+KR:wght@300;500;700&display=swap');
+
+        :root {
+            --bg-base: #050505; 
+            --bg-card: rgba(28, 28, 30, 0.45); 
+            --text-main: rgba(255, 255, 255, 0.92);
+            --text-sub: rgba(255, 255, 255, 0.45);
+            --font-main: 'SF Pro Display', 'Noto Sans KR', sans-serif;
+            
+            --color-gold: #d4af37;
+            --color-silver: #a2a2a2;
+            --color-red: #9c2a2a;
+            --color-purple: #5e4b8b;
+            --color-orange: #b36b2d;
+            --color-blue: #3a6b8a;
+            --color-indigo: #4a4e8a;
+            --color-green: #2d5a3f;
+            --color-brown: #705a45;
+            --color-teal: #3d7a75;
+            --color-grey: #636366;
+        }
+
+        * { box-sizing: border-box; font-family: var(--font-main); -webkit-font-smoothing: antialiased; }
+        
+        body { 
+            margin: 0; min-height: 100vh; background: var(--bg-base); 
+            color: var(--text-main); padding: 100px 20px; 
+            display: flex; flex-direction: column; align-items: center; overflow-x: hidden;
+        }
+        
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% -20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        .external-nav {
+            position: fixed; top: 30px; right: 40px; z-index: 10001;
+        }
+        .nav-link-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.15, 0, 0.15, 1);
+        }
+        .nav-link-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .container { max-width: 1200px; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        
+        .header { margin-bottom: 100px; text-align: center; }
+        .header h1 { 
+            font-size: 11px; font-weight: 500; letter-spacing: 0.7em; margin: 0; 
+            color: var(--text-sub); text-transform: uppercase;
+        }
+
+        .group-section { width: 100%; margin-bottom: 120px; }
+
+        .group-title { 
+            font-size: 42px; font-weight: 700; color: var(--group-color); 
+            letter-spacing: -0.04em; margin-bottom: 50px; text-align: center;
+            opacity: 0.9;
+        }
+
+        .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 32px; width: 100%; }
+        
+        .card { 
+            width: 200px; padding: 40px 24px; background: var(--bg-card); 
+            border-radius: 32px; text-align: center; 
+            transition: all 0.5s cubic-bezier(0.15, 0, 0.15, 1); 
+            border: 0.5px solid rgba(255, 255, 255, 0.08); cursor: pointer;
+            backdrop-filter: blur(30px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .card:hover { 
+            transform: translateY(-8px); 
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(44, 44, 46, 0.6);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        .card:active { transform: scale(0.97); }
+
+        .avatar-box { 
+            width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 24px; 
+            padding: 2px; background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .avatar-inner { 
+            width: 100%; height: 100%; border-radius: 50%; 
+            background-size: cover; background-position: center; 
+            background-color: #1c1c1e;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .default-avatar {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+        }
+        .default-avatar svg { width: 38%; fill: var(--group-color); opacity: 0.6; }
+
+        .id-label { 
+            font-size: 10px; font-weight: 500; color: var(--group-color); 
+            padding: 4px 12px; margin-bottom: 14px; border-radius: 8px; 
+            background: rgba(255,255,255,0.03); display: inline-block; 
+            letter-spacing: 0.08em; border: 0.5px solid rgba(255,255,255,0.05);
+        }
+
+        .info b { display: block; font-size: 22px; color: var(--text-main); font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+        .info p { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin: 0; font-weight: 300; word-break: keep-all; }
+
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.7); display: none; 
+            justify-content: center; align-items: center;
+            z-index: 9999; pointer-events: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(0px);
+            opacity: 0;
+        }
+        .modal-overlay.active { display: flex; backdrop-filter: blur(25px); pointer-events: auto; opacity: 1; }
+        
+        .modal-card { 
+            background: #121212; width: 90%; max-width: 420px; 
+            padding: 60px 40px; border: 0.5px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 40px; text-align: center; position: relative;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.7);
+            transform: scale(0.9) translateY(30px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .modal-overlay.active .modal-card { transform: scale(1) translateY(0); opacity: 1; }
+        
+        .modal-name { font-size: 44px; font-weight: 700; color: #fff; margin-bottom: 10px; letter-spacing: -0.04em; }
+        .modal-role { color: var(--m-color); font-size: 14px; font-weight: 500; letter-spacing: 0.4em; margin-bottom: 35px; display: block; text-transform: uppercase; }
+        .modal-desc { font-size: 17px; color: var(--text-sub); line-height: 1.7; margin-bottom: 45px; font-weight: 300; }
+
+        .dm-btn { 
+            width: 100%; padding: 20px; background: #fff; color: #000; border: none; 
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease; 
+            font-size: 16px; border-radius: 20px;
+        }
+        .dm-btn:hover { background: #e5e5e7; transform: translateY(-2px); }
+        .dm-btn:active { transform: scale(0.98); }
+        
+        .close-btn { position: absolute; top: 28px; right: 28px; color: var(--text-sub); cursor: pointer; background: none; border: none; font-size: 24px; transition: 0.2s; }
+        .close-btn:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <nav class="external-nav">
+        <a href="https://www.rp-ch.kro.kr/1" class="nav-link-btn">특임대 직급표 ➔</a>
+    </nav>
+
+    <div class="container">
+        <div class="header"><h1>보안국 직급표</h1></div>
+        <div id="orgContent"></div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal-card" id="mCard" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="closeModal()">✕</button>
+            <div id="mIdDisplay"></div>
+            <div id="mName" class="modal-name"></div>
+            <span id="mRole" class="modal-role"></span>
+            <p id="mDesc" class="modal-desc"></p>
+            <button id="mDmBtn" class="dm-btn">디스코드</button>
+        </div>
+    </div>
+
+    <script>
+        const _u = "aHR0cHM6Ly9oaWFjdXB0cmlnc25zdHloamFmbC5zdXBhYmFzZS5jbw==";
+        const _k = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1ocFlXTjFjSFJ5YVdkemJuTjBlV2hxWVdac0lpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpVMk5UTTBOellzSW1WNGNDSTZNakE1TVRJeU9UUTNObjAuM081Q2JDU01UeTFNQnFGYUVOQTFScno3V3g0UHNmSmtQM3B2Rk9QWld4UQ==";
+        const sb = supabase.createClient(atob(_u), atob(_k));
+
+        const ROLES = [
+            { name: "장관", color: "var(--color-gold)" }, 
+            { name: "차관", color: "var(--color-silver)" },
+            { name: "실장", color: "var(--color-red)" }, 
+            { name: "검사장", color: "var(--color-purple)" },
+            { name: "본부장", color: "var(--color-orange)" }, 
+            { name: "과장", color: "var(--color-blue)" },
+            { name: "교위관", color: "var(--color-indigo)" }, 
+            { name: "교사관", color: "var(--color-green)" },
+            { name: "교도관", color: "var(--color-brown)" }, 
+            { name: "부관", color: "var(--color-teal)" },
+            { name: "생도", color: "var(--color-grey)" }
+        ];
+
+        async function fetchAll() {
+            const { data, error } = await sb.from('org_members').select('*').order('rank', { ascending: true });
+            if (!error) render(data);
+        }
+
+        function render(data) {
+            const container = document.getElementById('orgContent');
+            container.innerHTML = '';
+            ROLES.forEach((roleObj) => {
+                const members = data.filter(m => m.role === roleObj.name);
+                if (members.length === 0) return;
+                const section = document.createElement('div');
+                section.className = 'group-section';
+                section.style.setProperty('--group-color', roleObj.color);
+                section.innerHTML = `<div class="group-title">${roleObj.name}</div>`;
+                const grid = document.createElement('div');
+                grid.className = 'grid';
+                members.forEach(m => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.onclick = () => openModal(m, roleObj);
+                    
+                    const defaultAvatar = `
+                        <div class="default-avatar">
+                            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>`;
+
+                    card.innerHTML = `
+                        <div class="avatar-box">
+                            <div class="avatar-inner" style="${m.url ? `background-image:url('${m.url}')` : ''}">
+                                ${!m.url ? defaultAvatar : ''}
+                            </div>
+                        </div>
+                        <div class="info">
+                            <span class="id-label">${m.id}</span>
+                            <b>${m.name}</b>
+                            <p>${m.s || '소개가 없습니다.'}</p>
+                        </div>`;
+                    grid.appendChild(card);
+                });
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+        }
+
+        function openModal(member, roleObj) {
+            const overlay = document.getElementById('modalOverlay');
+            document.getElementById('mName').innerText = member.name;
+            document.getElementById('mRole').innerText = roleObj.name;
+            document.getElementById('mIdDisplay').innerHTML = `<span class="id-label">고유번호 ${member.id}</span>`;
+            document.getElementById('mDesc').innerText = member.s || "추가 정보가 등록되지 않았습니다.";
+            document.getElementById('mCard').style.setProperty('--m-color', roleObj.color);
+            
+            overlay.style.display = 'flex';
+            void overlay.offsetWidth; 
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            document.getElementById('mDmBtn').onclick = () => {
+                if (!member.discord_id) return alert("디스코드 정보가 없습니다.");
+                window.location.href = `discord://-/users/${member.discord_id}`;
+            };
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            overlay.classList.remove('active');
+            
+            setTimeout(() => {
+                if (!overlay.classList.contains('active')) {
+                    overlay.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
+            }, 300); 
+        }
+
+        fetchAll();
+    </script>
+</body>
+</html>
