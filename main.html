@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RP 통합 관리 시스템</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif; }
+        body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #020617, #020617 40%, #000); color: #e5e7eb; overflow-x: hidden; }
+        .container { max-width: 1100px; margin: 40px auto; padding: 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        h1 { font-size: 26px; font-weight: 600; }
+        .admin-btn { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); padding: 8px 14px; border-radius: 12px; color: #cbd5e1; cursor: pointer; display: none; }
+        .input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(0, 0, 0, .4); color: white; margin-bottom: 10px; outline: none; }
+        .category { margin-bottom: 30px; }
+        .category-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; color: #9ca3af; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+        .card { background: rgba(30, 30, 30, .55); backdrop-filter: blur(18px); border-radius: 20px; padding: 16px; border: 1px solid rgba(255, 255, 255, .06); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+        .title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+        .segment { display: flex; background: rgba(0, 0, 0, .35); border-radius: 14px; padding: 4px; border: 1px solid rgba(255, 255, 255, .05); }
+        .seg-btn { flex: 1; border: 0; background: transparent; color: #cbd5e1; padding: 10px 0; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
+        .seg-btn:hover { background: rgba(255, 255, 255, .05); }
+        .win:hover { background: rgba(34, 197, 94, .18); color: #86efac; }
+        .lose:hover { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+        .calculator-section { margin-top: 80px; padding-top: 40px; border-top: 1px solid rgba(255, 255, 255, .1); }
+        .table-wrapper { background: rgba(255, 255, 255, 0.03); border-radius: 16px; overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); text-align: left; font-size: 14px; }
+        tr.law-row { cursor: pointer; transition: 0.15s; }
+        tr.law-row:hover { background: rgba(255, 255, 255, 0.05); }
+        tr.law-row.selected { background: rgba(59, 130, 246, 0.2); }
+        .fine-text { color: #fbbf24; font-weight: 700; text-align: right; }
+        .time-text { color: #f87171; font-weight: 700; text-align: right; }
+        .result-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 100px; padding: 12px 24px; display: flex; align-items: center; gap: 20px; z-index: 3000; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); visibility: hidden; opacity: 0; transition: 0.3s; }
+        .result-bar.active { visibility: visible; opacity: 1; }
+        .result-value { font-weight: 700; color: #fff; margin-left: 4px; }
+        .btn-reset { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; padding: 6px 12px; border-radius: 20px; cursor: pointer; color: #ef4444; font-size: 11px; font-weight: 700; }
+        .login { position: fixed; inset: 0; background: rgba(0, 0, 0, .7); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .login-box { background: rgba(51, 50, 50, 0.75); padding: 24px; border-radius: 18px; width: 320px; border: 1px solid rgba(255, 255, 255, .08); }
+        .login-btn { width: 100%; padding: 11px; border-radius: 10px; border: 0; background: rgba(255, 255, 255, .08); color: white; font-weight: 600; cursor: pointer; }
+        .admin-panel { position: fixed; inset: 0; background: rgba(0, 0, 0, .75); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 10001; }
+        .panel-box { width: 520px; max-height: 80vh; overflow: auto; background: rgba(20, 20, 20, .9); border-radius: 18px; padding: 20px; border: 1px solid rgba(255, 255, 255, .08); }
+        .toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-10px); padding: 14px 20px; border-radius: 16px; font-weight: 600; font-size: 14px; opacity: 0; pointer-events: none; transition: .25s ease; z-index: 30000; backdrop-filter: blur(20px); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.win { background: rgba(34, 197, 94, .18); color: #86efac; }
+        .toast.lose { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+        .fireworks { position: fixed; inset: 0; pointer-events: none; z-index: 9998; }
+        .particle { position: absolute; width: 8px; height: 8px; border-radius: 50%; animation: explode 2200ms cubic-bezier(.15, .75, .25, 1) forwards; }
+        @keyframes explode { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(.15); opacity: 0; } }
+        .toggle-container { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .toggle-container input { display: none; }
+        .slider { position: relative; width: 34px; height: 18px; background: #334155; border-radius: 20px; transition: 0.3s; }
+        .slider:before { content: ""; position: absolute; height: 14px; width: 14px; left: 2px; bottom: 2px; background: white; border-radius: 50%; transition: 0.3s; }
+        input:checked + .slider { background: #3b82f6; }
+        input:checked + .slider:before { transform: translateX(16px); }
+        @keyframes appleFadeOut {0% { opacity: 1; transform: scale(1) translateY(0); }100% { opacity: 0; transform: scale(1.05) translateY(-30px); filter: blur(10px); }}
+        .login-exit { animation: appleFadeOut 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="login" class="login">
+        <div class="login-box">
+            <div style="margin-bottom:8px; font-weight:600">접속 코드</div>
+            <input id="codeInput" type="password" class="input" placeholder="코드 입력" autocomplete="new-password" />
+            <button class="login-btn" onclick="login()">로그인</button>
+        </div>
+    </div>
+
+    <div id="adminPanel" class="admin-panel">
+        <div class="panel-box">
+            <div style="font-weight:600; margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+                <span>유저 관리</span>
+                <button id="cancelEditBtn" onclick="resetAdminInputs()" style="display:none; padding:4px 8px; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid #ef4444; border-radius:6px; cursor:pointer; font-size:11px;">편집 취소</button>
+            </div>
+            <div id="userList"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:6px; margin-top:12px;">
+                <input id="addNick" class="input" style="margin:0" placeholder="닉네임">
+                <input id="addCode" class="input" style="margin:0" placeholder="코드">
+                <select id="addRole" style="background:#000; color:#fff; border-radius:10px; border:1px solid #333;"></select>
+                <button id="submitUserBtn" onclick="addUser()" style="padding:0 15px; background:rgba(255,255,255,.08); color:white; border:0; border-radius:8px; cursor:pointer;">추가</button>
+            </div>
+            <br>
+            <button class="login-btn" onclick="closeAdmin()">닫기</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="fireworks" class="fireworks"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>RP 관리</h1>
+            <button id="adminBtn" class="admin-btn" onclick="openAdmin()">관리</button>
+        </div>
+        <div id="app"></div>
+        <div class="calculator-section">
+            <header style="margin-bottom: 24px;">
+                <h1 style="font-size: 28px; color: #fff;">벌금 계산기</h1>
+            </header>
+            <input type="text" id="lawSearch" class="input" placeholder="법률 명칭 또는 내용 검색..." onkeyup="filterLaws()">
+            <div id="lawSections">
+                <div class="category-title">RP 관련 범죄</div>
+                <div class="table-wrapper"><table><tbody id="lawBodyRP"></tbody></table></div>
+                <div class="category-title">경범죄</div>
+                <div class="table-wrapper"><table><tbody id="lawBody1"></tbody></table></div>
+                <div class="category-title">중범죄</div>
+                <div class="table-wrapper"><table><tbody id="lawBody2"></tbody></table></div>
+                <div class="category-title">공무원 관련법</div>
+                <div class="table-wrapper"><table><tbody id="lawBody3"></tbody></table></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultBar" class="result-bar">
+        <div>벌금 <span id="totalFine" class="result-value">0원</span></div>
+        <div>구금 <span id="totalTime" class="result-value">0분</span></div>
+        <label class="toggle-container">
+            <input type="checkbox" id="convertToggle" onchange="calculate()">
+            <span class="slider"></span>
+            <span style="font-size:12px; font-weight:700">보석금</span>
+        </label>
+        <button class="btn-reset" onclick="resetAll()">RESET</button>
+    </div>
+
+    <script>
+        const _0xsb_u = "aHR0cHM6Ly9oaWFjdXB0cmlnc25zdHloamFmbC5zdXBhYmFzZS5jbw=="; 
+        const _0xsb_k = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1ocFlXTjFjSFJ5YVdkemJuTjBlV2hxWVdac0lpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpVMk5UTTBOellzSW1WNGNDSTZNakE1TVRJeU9UUTNObjAuM081Q2JDU01UeTFNQnFGYUVOQTFScno3V3g0UHNmSmtQM3B2Rk9QWld4UQ==";
+        const sb = supabase.createClient(atob(_0xsb_u), atob(_0xsb_k));
+        const _0xwh1 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ5MTQwNjc4MDI2NDIxODc0NC85dWg4NVFROW9ObWxUanBsXzY5YUd1eHV2dWxBZEZGN2Q4UDlpRjFidl9lUy02ODZvcFVLd2NnennxQU9YSHZCOA==";
+        const _0xwh2 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ5MTQ0NDkzNTEzMDM0OTc1OC9KMFJRMWpCZlhTY2NuUTVhVnlEUFMyUTdVNDg0TnViYVlfRUdhWDRMV1FGdjBBVGYtbjNsbHZxTncwcjZsMTNiRzNKNQ==";
+
+        const structure = {
+            "ATM": ["중부 ATM", "서부 ATM"],
+            "편의점": ["서부 편의점", "중부 편의점", "북부 편의점", "이케아 옆 편의점", "호수 위 편의점"],
+            "대형 & 기타": ["북부은행", "닭공장", "북부 빈집"]
+        };
+
+        const laws = {
+            rp: [
+                { name: "ATM", fine: 50000000, time: 10, note: "-", convertible: false },
+                { name: "편의점", fine: 80000000, time: 10, note: "-", convertible: false },
+                { name: "빈집", fine: 50000000, time: 10, note: "-", convertible: false },
+                { name: "북부은행", fine: 450000000, time: 20, note: "-", convertible: true },
+                { name: "닭공장", fine: 350000000, time: 30, note: "-", convertible: true },
+                { name: "즉흥", fine: 200000000, time: 20, note: "-", convertible: false },
+                { name: "수배", fine: 200000000, time: 20, note: "-", convertible: false },
+                { name: "영장", fine: 600000000, time: 40, note: "인당 3억 / 30분", convertible: false }
+            ],
+            normal: [
+                { name: "소음공해", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "불법 주정차", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "속도 위반", fine: 10000000, time: 0, note: "일반120/고속200", convertible: false },
+                { name: "신호 위반", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "불법 유턴", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "역주행 / 차선 위반", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "인도 주행", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "공공기물 파손", fine: 10000000, time: 0, note: "-", convertible: false },
+                { name: "스턴트", fine: 20000000, time: 0, note: "-", convertible: false },
+                { name: "차량파손", fine: 50000000, time: 10, note: "-", convertible: false },
+                { name: "뺑소니", fine: 100000000, time: 20, note: "-", convertible: false },
+                { name: "폭주(400km↑)", fine: 50000000, time: 20, note: "-", convertible: false },
+                { name: "항공기 저공 비행", fine: 300000000, time: 60, note: "보호구역 내", convertible: false },
+                { name: "보복운전", fine: 200000000, time: 30, note: "-", convertible: false },
+                { name: "무허가 항공기 운행", fine: 300000000, time: 60, note: "-", convertible: false }
+            ],
+            heavy: [
+                { name: "공범죄", fine: 0, time: 0, note: "원 죄수와 동일", convertible: false },
+                { name: "난폭운전", fine: 50000000, time: 30, note: "위반 3개 이상", convertible: false },
+                { name: "명예훼손", fine: 20000000, time: 10, note: "-", convertible: false },
+                { name: "폭행", fine: 100000000, time: 20, note: "-", convertible: false },
+                { name: "불법 물건 소지", fine: 80000000, time: 20, note: "-", convertible: false },
+                { name: "불법 총기 소지", fine: 150000000, time: 20, note: "-", convertible: false },
+                { name: "불법 무기 언급", fine: 100000000, time: 20, note: "-", convertible: false },
+                { name: "증거 인멸", fine: 200000000, time: 20, note: "-", convertible: false },
+                { name: "차량 절도", fine: 100000000, time: 30, note: "-", convertible: false },
+                { name: "시민 살인", fine: 300000000, time: 30, note: "-", convertible: false }
+            ],
+            public: [
+                { name: "관용 차량 절도 시도", fine: 100000000, time: 0, note: "-", convertible: false },
+                { name: "공무원 명예훼손", fine: 200000000, time: 10, note: "-", convertible: false },
+                { name: "공무원 차량 파손", fine: 100000000, time: 20, note: "-", convertible: false },
+                { name: "공무원 사칭", fine: 50000000, time: 20, note: "-", convertible: false },
+                { name: "공무집행 방해", fine: 150000000, time: 30, note: "지시불이행 등", convertible: false },
+                { name: "국유지/사유지 침입", fine: 400000000, time: 10, note: "-", convertible: false },
+                { name: "공무원 폭행", fine: 300000000, time: 30, note: "-", convertible: false },
+                { name: "공무원 차량 절도", fine: 400000000, time: 30, note: "-", convertible: false },
+                { name: "공무원 살인", fine: 400000000, time: 40, note: "-", convertible: false }
+            ]
+        };
+
+        let users = [];
+        let currentUser = null;
+
+        async function fetchUsers() {
+            const { data, error } = await sb.from('rp_users').select('*');
+            if (!error) {
+                const rolePriority = { 'superadmin': 1, 'admin': 2, 'user': 3 };
+                users = data.sort((a, b) => rolePriority[a.role] - rolePriority[b.role]);
+            }
+        }
+
+        async function login() {
+            const code = document.getElementById("codeInput").value.trim();
+            if (!code) return;
+            await fetchUsers();
+            const u = users.find(user => user.code === code);
+            if (u) {
+                currentUser = u;
+                const loginScreen = document.getElementById("login");
+                loginScreen.classList.add("login-exit");
+                setTimeout(() => {
+                    loginScreen.style.display = "none";
+                    if (u.role === 'admin' || u.role === 'superadmin') {
+                        document.getElementById("adminBtn").style.display = 'block';
+                    }
+                    toast(`${u.nick} 로그인`, "win");
+                    render();
+                    initCalculator();
+                }, 600); 
+            } else {
+                shakeLogin();
+                toast("존재하지 않는 코드", "lose");
+            }
+        }
+
+        function shakeLogin() {
+            const box = document.querySelector(".login-box");
+            box.animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(-10px)' },
+                { transform: 'translateX(10px)' },
+                { transform: 'translateX(-10px)' },
+                { transform: 'translateX(10px)' },
+                { transform: 'translateX(0)' }
+            ], { duration: 300 });
+        }
+
+        async function copyNotice(name) {
+    const text = `/보안국 ╭《 ${name} 강도사건 발생 》╮ 보안국이 출동합니다. 현 시간부로 사건 지점으로부터 2블럭이상 접근 시 공범으로 간주하여 사살 및 긴급체포 등 불이익이 발생할 수 있습니다.\n-『 보안국 』-`;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+        }
+        toast("공지 복사 완료", "win");
+    } catch (err) {
+        toast("복사 실패", "lose");
+    }
+
+    let matchName = name;
+    if (name.includes("ATM")) matchName = "ATM";
+    if (name.includes("편의점")) matchName = "편의점";
+    if (name.includes("빈집")) matchName = "빈집";
+
+    const rows = document.querySelectorAll('.law-row');
+    rows.forEach(row => {
+        const lawName = row.cells[0].innerText;
+        if (lawName === matchName || lawName === name) {
+            if (!row.classList.contains('selected')) {
+                row.click(); 
+            }
+        }
+    });
+}
+
+        async function sendWebhook(data) {
+            const isWin = data.result === "승리";
+            const payload = JSON.stringify({
+                embeds: [{
+                    title: isWin ? "승리" : "패배",
+                    color: isWin ? 5763719 : 15548997,
+                    fields: [
+                        { name: "이름", value: currentUser.nick, inline: false },
+                        { name: "장소", value: data.name, inline: false }
+                    ],
+                    timestamp: new Date()
+                }]
+            });
+            [atob(_0xwh1), atob(_0xwh2)].forEach(url => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload }));
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+            Object.keys(structure).forEach(cat => {
+                const wrap = document.createElement('div'); wrap.className = 'category';
+                wrap.innerHTML = `<div class="category-title">${cat}</div>`;
+                const grid = document.createElement('div'); grid.className = 'grid';
+                structure[cat].forEach(name => {
+                    const card = document.createElement('div'); card.className = 'card';
+                    card.innerHTML = `<div class="title">${name}</div>
+                        <div class="segment">
+                            <button class="seg-btn win" onclick="handleRP('${name}', '승리')">승리</button>
+                            <button class="seg-btn lose" onclick="handleRP('${name}', '패배')">패배</button>
+                        </div>
+                        <button class="admin-btn" style="display:block; width:100%; margin-top:10px; font-size:12px;" onclick="copyNotice('${name}')">사이드 공지</button>`;
+                    grid.appendChild(card);
+                });
+                wrap.appendChild(grid); app.appendChild(wrap);
+            });
+        }
+
+        function handleRP(name, res) {
+            sendWebhook({ name, result: res });
+            toast(`${name} ${res}`, res === '승리' ? "win" : "lose");
+            if (res === '승리') fireworks();
+        }
+
+        function initCalculator() {
+            renderLawTable(laws.rp, 'lawBodyRP');
+            renderLawTable(laws.normal, 'lawBody1');
+            renderLawTable(laws.heavy, 'lawBody2');
+            renderLawTable(laws.public, 'lawBody3');
+        }
+
+        function renderLawTable(data, targetId) {
+            const body = document.getElementById(targetId);
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'law-row';
+                row.dataset.fine = item.fine;
+                row.dataset.time = item.time;
+                row.dataset.convertible = item.convertible;
+                row.innerHTML = `<td>${item.name}</td><td class="fine-text">${item.fine.toLocaleString()}원</td><td class="time-text">${item.time}분</td>`;
+                row.onclick = () => { row.classList.toggle('selected'); calculate(); };
+                body.appendChild(row);
+            });
+        }
+
+        function calculate() {
+            let f = 0, t = 0;
+            const conv = document.getElementById('convertToggle').checked;
+            const selectedRows = document.querySelectorAll('.law-row.selected');
+            selectedRows.forEach(row => {
+                let fine = parseInt(row.dataset.fine);
+                let time = parseInt(row.dataset.time);
+                let convertible = row.dataset.convertible === "true";
+                if (conv && time > 0) {
+                    if (convertible) { if (time > 10) { fine += (time - 10) * 5000000; time = 10; } }
+                    else { fine += time * 5000000; time = 0; }
+                }
+                f += fine; t += time;
+            });
+            document.getElementById('totalFine').innerText = f.toLocaleString() + "원";
+            document.getElementById('totalTime').innerText = t + "분";
+            document.getElementById('resultBar').classList.toggle('active', selectedRows.length > 0);
+        }
+
+        function filterLaws() {
+            const q = document.getElementById('lawSearch').value.toLowerCase();
+            document.querySelectorAll('.law-row').forEach(r => r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none");
+        }
+
+        function resetAll() {
+            document.querySelectorAll('.law-row').forEach(r => r.classList.remove('selected'));
+            calculate();
+        }
+
+        function openAdmin() {
+            document.getElementById("adminPanel").style.display = "flex"; refreshUserList(); 
+            const sel = document.getElementById("addRole");
+            sel.innerHTML = currentUser.role === 'admin' ? '<option value="user">user</option>' : '<option value="user">user</option><option value="admin">admin</option><option value="superadmin">superadmin</option>';
+        }
+
+        function closeAdmin() { document.getElementById("adminPanel").style.display = "none"; resetAdminInputs(); }
+
+        async function refreshUserList() { await fetchUsers(); renderUsers(); }
+
+        function renderUsers() {
+            const list = document.getElementById("userList");
+            list.innerHTML = '';
+            users.forEach((u) => {
+                if (currentUser.role === 'admin' && u.role === 'superadmin') return;
+                const row = document.createElement('div');
+                row.style.cssText = "padding:12px; border-bottom:1px solid #333; display:flex; align-items:center; gap:10px;";
+                row.innerHTML = `
+                    <div style="flex:1">
+                        <b style="color:#fff">${u.nick}</b> 
+                        <span style="font-size:12px; color:#888; margin-left:5px;">PW: ${u.code} (${u.role})</span>
+                    </div>
+                    <button onclick="editUser('${u.nick}', '${u.code}', '${u.role}')" style="padding:4px 8px; background:rgba(59,130,246,0.2); color:#60a5fa; border:1px solid #3b82f6; border-radius:6px; cursor:pointer; font-size:11px;">편집</button>
+                    <button onclick="delUserFromDB('${u.nick}')" style="padding:4px 8px; background:rgba(239,68,68,0.2); color:#f87171; border:1px solid #ef4444; border-radius:6px; cursor:pointer; font-size:11px;">삭제</button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        async function addUser() {
+    const nick = document.getElementById("addNick").value;
+    const code = document.getElementById("addCode").value;
+    const role = document.getElementById("addRole").value;
+
+    if (!nick || !code) return;
+
+    const { data: existingUser } = await sb
+        .from('rp_users')
+        .select('code')
+        .eq('code', code)
+        .maybeSingle();
+
+    if (existingUser) {
+        toast("이미 존재하는 코드입니다.", "lose");
+        return;
+    }
+
+    const { error } = await sb.from('rp_users').insert([{ nick, code, role }]);
+    
+    if(!error) {
+        toast("추가 완료", "win");
+        resetAdminInputs();
+        refreshUserList();
+    } else {
+        toast("추가 실패", "lose");
+    }
+}
+
+        async function delUserFromDB(nick) {
+            if(!confirm(`${nick} 유저를 삭제하시겠습니까?`)) return;
+            await sb.from('rp_users').delete().eq('nick', nick);
+            refreshUserList();
+        }
+
+        async function editUser(nick, code, role) {
+            const nickInput = document.getElementById("addNick");
+            const codeInput = document.getElementById("addCode");
+            const roleSelect = document.getElementById("addRole");
+            const submitBtn = document.getElementById("submitUserBtn");
+            const cancelBtn = document.getElementById("cancelEditBtn");
+            const originalNick = nick;
+
+            nickInput.value = nick;
+            codeInput.value = code;
+            roleSelect.value = role;
+
+            cancelBtn.style.display = "block";
+            submitBtn.innerText = "수정";
+            submitBtn.style.background = "#3b82f6";
+
+            submitBtn.onclick = async function() {
+                const newNick = nickInput.value;
+                const newCode = codeInput.value;
+                const newRole = roleSelect.value;
+                const { error } = await sb.from('rp_users').update({ nick: newNick, code: newCode, role: newRole }).eq('nick', originalNick);
+                if (!error) {
+                    toast("수정 완료", "win");
+                    resetAdminInputs();
+                    refreshUserList();
+                } else {
+                    toast("수정 실패", "lose");
+                }
+            };
+        }
+
+        function resetAdminInputs() {
+            const nickInput = document.getElementById("addNick");
+            const codeInput = document.getElementById("addCode");
+            const submitBtn = document.getElementById("submitUserBtn");
+            const cancelBtn = document.getElementById("cancelEditBtn");
+            nickInput.value = "";
+            nickInput.readOnly = false;
+            nickInput.style.opacity = "1";
+            codeInput.value = "";
+            cancelBtn.style.display = "none";
+            submitBtn.innerText = "추가";
+            submitBtn.style.background = "rgba(255,255,255,.08)";
+            submitBtn.onclick = addUser;
+        }
+
+        let toastTimer;
+        function toast(msg, type) {
+            const el = document.getElementById('toast'); el.className = 'toast ' + type; el.textContent = msg;
+            clearTimeout(toastTimer); el.classList.add('show');
+            toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+        }
+
+        function fireworks() {
+            const container = document.getElementById('fireworks');
+            for(let i=0; i<30; i++) {
+                const p = document.createElement('div'); p.className = 'particle';
+                p.style.left = '50%'; p.style.top = '50%';
+                p.style.setProperty('--x', (Math.random()*400-200)+'px'); p.style.setProperty('--y', (Math.random()*400-200)+'px');
+                p.style.background = `hsl(${Math.random()*360},100%,50%)`;
+                container.appendChild(p); setTimeout(() => p.remove(), 2000);
+            }
+        }
+        document.getElementById("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+    </script>
+</body>
+</html>
