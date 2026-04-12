@@ -3,79 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>부대 통합 데이터 관리</title>
+    <title>NSB 통합 관리 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg: #0f0f12;
-            --card: #1a1a1f;
-            --accent: #5865F2;
-            --edit: #ff9500;
-            --danger: #ff3b30;
-            --text: #ffffff;
-            --group-header: #2d2d35;
+            --bg: #0f0f12; --card: #1a1a1f; --accent: #5865F2; --edit: #ff9500; --danger: #ff3b30; --text: #ffffff;
         }
         body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); padding: 50px 20px; margin: 0; }
         .container { max-width: 950px; margin: 0 auto; }
-        h1 { font-size: 24px; margin-bottom: 30px; text-align: center; }
         .form-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 30px; position: sticky; top: 20px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .grid-inputs { display: grid; grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         input, select { background: #25252b; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
-        input:focus { border-color: var(--accent); outline: none; }
         .full-width { width: 100%; margin-top: 10px; }
         .btn-group { display: flex; gap: 10px; margin-top: 15px; }
-        button { cursor: pointer; border: none; font-weight: 700; transition: 0.2s; flex: 1; }
-        .add-btn { background: var(--accent); color: #fff; padding: 15px; border-radius: 12px; }
-        .edit-mode-btn { background: var(--edit); color: #fff; display: none; padding: 15px; border-radius: 12px; }
-        .cancel-btn { background: #444; color: #fff; display: none; padding: 15px; border-radius: 12px; flex: 0.3; }
+        button { cursor: pointer; border: none; font-weight: 700; transition: 0.2s; flex: 1; padding: 15px; border-radius: 12px; }
+        .add-btn { background: var(--accent); color: #fff; }
+        .edit-mode-btn { background: var(--edit); color: #fff; display: none; }
+        .cancel-btn { background: #444; color: #fff; display: none; flex: 0.3; }
         
-        .section-title { background: var(--group-header); padding: 10px 20px; margin-top: 40px; border-radius: 10px 10px 0 0; font-size: 16px; font-weight: bold; border-left: 5px solid var(--accent); }
+        .section-title { background: #2d2d35; padding: 12px 20px; margin-top: 40px; border-radius: 10px 10px 0 0; font-size: 16px; font-weight: bold; border-left: 5px solid var(--accent); }
         table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 0 0 20px 20px; overflow: hidden; margin-bottom: 20px; }
         th { background: rgba(255,255,255,0.03); padding: 15px; font-size: 13px; text-align: left; border-bottom: 1px solid #333; color: #888; }
         td { padding: 15px; font-size: 14px; border-bottom: 1px solid #2a2a2f; }
         .action-btns { display: flex; gap: 8px; }
-        .row-edit-btn { background: var(--edit); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
-        .del-btn { background: var(--danger); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; }
-        .id-label { color: var(--accent); font-weight: 800; font-family: monospace; }
-        .tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-right: 5px; }
-        .tag-special { background: #e6b800; color: #000; }
-        .tag-normal { background: #555; color: #fff; }
+        .row-edit-btn { background: var(--edit); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; flex: none; }
+        .del-btn { background: var(--danger); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 12px; flex: none; }
+        .role-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🛡️ 부대 통합 데이터 관리</h1>
+    <h1>🛡️ 부대원 데이터 관리</h1>
     <div class="form-card">
         <input type="hidden" id="dbInternalId">
         <div class="grid-inputs">
-            <select id="iptCategory">
+            <select id="iptCategory" onchange="updateRoleOptions()">
+                <option value="일반">일반 부대원</option>
                 <option value="특임대">특임대</option>
-                <option value="일반부대">일반 부대</option>
             </select>
             <input type="number" id="iptId" placeholder="고유 ID">
             <input type="text" id="iptName" placeholder="닉네임">
-            <select id="iptRole">
-                <option value="특임대 사령관">특임대 사령관</option>
-                <option value="특임대 부사령관">특임대 부사령관</option>
-                <option value="특임대 팀장">특임대 팀장</option>
-                <option value="특임대 팀원">특임대 팀원</option>
-                <option value="특임대 수습">특임대 수습</option>
-                <option value="일반 장교">일반 장교</option>
-                <option value="일반 부사관">일반 부사관</option>
-                <option value="일반 병사">일반 병사</option>
-            </select>
-            <input type="number" id="iptRank" placeholder="직급 순서">
+            <select id="iptRole"></select>
+            <input type="number" id="iptRank" placeholder="순서">
         </div>
         <input type="text" id="iptUrl" class="full-width" placeholder="프로필 이미지 URL">
         <input type="text" id="iptS" class="full-width" placeholder="소개글">
-        <input type="text" id="iptDiscord" class="full-width" placeholder="디스코드 고유 ID (Snowflake)">
+        <input type="text" id="iptDiscord" class="full-width" placeholder="디스코드 ID">
         <div class="btn-group">
             <button id="addBtn" class="add-btn" onclick="saveData('insert')">부대원 추가</button>
             <button id="updateBtn" class="edit-mode-btn" onclick="saveData('update')">정보 업데이트</button>
             <button id="cancelBtn" class="cancel-btn" onclick="resetForm()">취소</button>
         </div>
     </div>
-
     <div id="listContainer"></div>
 </div>
 
@@ -84,50 +63,45 @@
     const _k = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1ocFlXTjFjSFJ5YVdkemJuTjBlV2hxWVdac0lpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpVMk5UTTBOellzSW1WNGNDSTZNakE1TVRJeU9UUTNObjAuM081Q2JDU01UeTFNQnFGYUVOQTFScno3V3g0UHNmSmtQM3B2Rk9QWld4UQ==";
     const sb = supabase.createClient(atob(_u), atob(_k));
 
+    const ROLE_DATA = {
+        "일반": [
+            {name: "장관", color: "#d4af37"}, {name: "차관", color: "#a2a2a2"}, {name: "실장", color: "#9c2a2a"},
+            {name: "검사장", color: "#5e4b8b"}, {name: "본부장", color: "#b36b2d"}, {name: "과장", color: "#3a6b8a"},
+            {name: "교위관", color: "#4a4e8a"}, {name: "교사관", color: "#2d5a3f"}, {name: "교도관", color: "#705a45"},
+            {name: "부관", color: "#3d7a75"}, {name: "생도", color: "#636366"}
+        ],
+        "특임대": [
+            {name: "특임대 사령관", color: "#FF3B30"}, {name: "특임대 부사령관", color: "#AF52DE"},
+            {name: "특임대 팀장", color: "#34C759"}, {name: "특임대 팀원", color: "#007AFF"}, {name: "특임대 수습", color: "#8E8E93"}
+        ]
+    };
+
+    function updateRoleOptions() {
+        const cat = document.getElementById('iptCategory').value;
+        const roleSelect = document.getElementById('iptRole');
+        roleSelect.innerHTML = ROLE_DATA[cat].map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+    }
+
     async function fetchMembers() {
         const { data, error } = await sb.from('org_members').select('*').order('rank', { ascending: true });
         if (error) return;
-
         const container = document.getElementById('listContainer');
         container.innerHTML = '';
 
-        const categories = ["특임대", "일반부대"];
-        
-        categories.forEach(cat => {
-            const filtered = data.filter(m => (m.category === cat) || (!m.category && cat === "특임대"));
+        ["특임대", "일반"].forEach(cat => {
+            const filtered = data.filter(m => (m.category === cat) || (!m.category && cat === "일반"));
             if (filtered.length === 0) return;
-
             const section = document.createElement('div');
-            section.innerHTML = `
-                <div class="section-title">${cat} 목록</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:10%">순서</th>
-                            <th style="width:15%">고유 ID</th>
-                            <th>닉네임</th>
-                            <th>역할</th>
-                            <th style="width:20%">관리</th>
-                        </tr>
-                    </thead>
-                    <tbody id="list-${cat}"></tbody>
-                </table>
-            `;
+            section.innerHTML = `<div class="section-title">${cat} 명단</div><table><thead><tr><th>ID</th><th>이름</th><th>직급</th><th>관리</th></tr></thead><tbody id="list-${cat}"></tbody></table>`;
             container.appendChild(section);
-
             const tbody = section.querySelector('tbody');
             filtered.forEach(m => {
+                const roleObj = [...ROLE_DATA["일반"], ...ROLE_DATA["특임대"]].find(r => r.name === m.role);
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${m.rank}</td>
-                    <td class="id-label">${m.id}</td>
-                    <td><b>${m.name}</b></td>
-                    <td><span class="tag ${m.category === '특임대' ? 'tag-special' : 'tag-normal'}">${m.category || '특임대'}</span>${m.role}</td>
-                    <td class="action-btns">
-                        <button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
-                        <button class="del-btn" onclick="deleteMember(${m.id}, '${m.name}')">삭제</button>
-                    </td>
-                `;
+                tr.innerHTML = `<td>${m.id}</td><td><b>${m.name}</b></td>
+                    <td><span class="role-badge" style="background:${roleObj?.color}20; color:${roleObj?.color}; border:1px solid ${roleObj?.color}40">${m.role}</span></td>
+                    <td class="action-btns"><button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
+                    <button class="del-btn" onclick="deleteMember(${m.id})">삭제</button></td>`;
                 tbody.appendChild(tr);
             });
         });
@@ -145,36 +119,22 @@
             s: document.getElementById('iptS').value,
             discord_id: document.getElementById('iptDiscord').value
         };
-
-        if(isNaN(payload.id) || !payload.name) return alert("고유 ID와 닉네임은 필수입니다.");
-
-        let result;
-        if(mode === 'insert') {
-            result = await sb.from('org_members').insert([payload]);
-        } else {
-            result = await sb.from('org_members').update(payload).eq('id', internalId);
-        }
-
-        if (result.error) {
-            alert("오류: " + result.error.message);
-        } else {
-            alert(mode === 'insert' ? "추가 완료" : "업데이트 완료");
-            resetForm();
-            fetchMembers();
-        }
+        const result = mode === 'insert' ? await sb.from('org_members').insert([payload]) : await sb.from('org_members').update(payload).eq('id', internalId);
+        if (result.error) alert("오류: " + result.error.message);
+        else { alert("완료되었습니다."); resetForm(); fetchMembers(); }
     }
 
     function startEdit(m) {
         document.getElementById('dbInternalId').value = m.id;
         document.getElementById('iptId').value = m.id;
         document.getElementById('iptName').value = m.name;
-        document.getElementById('iptCategory').value = m.category || '특임대';
+        document.getElementById('iptCategory').value = m.category || '일반';
+        updateRoleOptions();
         document.getElementById('iptRole').value = m.role;
         document.getElementById('iptRank').value = m.rank;
         document.getElementById('iptUrl').value = m.url || '';
         document.getElementById('iptS').value = m.s || '';
         document.getElementById('iptDiscord').value = m.discord_id || '';
-        
         document.getElementById('addBtn').style.display = 'none';
         document.getElementById('updateBtn').style.display = 'block';
         document.getElementById('cancelBtn').style.display = 'block';
@@ -194,12 +154,9 @@
         document.getElementById('cancelBtn').style.display = 'none';
     }
 
-    async function deleteMember(id, name) {
-        if (!confirm(`[${name}] 정보를 삭제하시겠습니까?`)) return;
-        await sb.from('org_members').delete().eq('id', id);
-        fetchMembers();
-    }
+    async function deleteMember(id) { if (confirm("삭제하시겠습니까?")) { await sb.from('org_members').delete().eq('id', id); fetchMembers(); } }
 
+    updateRoleOptions();
     fetchMembers();
 </script>
 </body>
