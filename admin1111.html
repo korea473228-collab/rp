@@ -140,7 +140,7 @@
                     <td><span class="role-badge" style="background:${rObj?.color}20; color:${rObj?.color}; border:1px solid ${rObj?.color}40">${m.role}</span></td>
                     <td class="action-btns">
                         <button class="row-edit-btn" onclick='startEdit(${JSON.stringify(m).replace(/'/g, "&apos;")})'>수정</button>
-                        <button class="del-btn" onclick="deleteMember(${m.id_set})">삭제</button>
+                        <button class="del-btn" onclick="deleteMember('${m.id_set}')">삭제</button>
                     </td></tr>`;
             });
         });
